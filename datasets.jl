@@ -14,10 +14,17 @@ function cite3channel(x::Array{<:AbstractFloat,4})
     end
 end    
 
-function get_data(path::String,batchsize::Int)
+function get_data(path::String,batchsize::Int,image_size::Int)
     paths=readdir(path,join=true)
-    lr=broadcast(x->load_image(x,(128,128)),paths) .|> cite3channel |> batch .|> Float32
-    hr=broadcast(x->load_image(x,(512,512)),paths) .|> cite3channel |> batch .|> Float32
+    hr_image_size=image_size*4
+    handle2dataset(x)=channelview(x) |>
+                    x->PermutedDimsArray(x,(2,3,1)).|> 
+                    cite3channel |> batch .|> Float32
+    all_images=Images.load.(paths)
+    lr=all_images|>x->imresize(x,(image_size,image_size)) |> handle2dataset
+    hr=all_images|>x->imresize(x,(hr_image_size,hr_image_size)) |> handle2dataset
+    # lr=broadcast(x->load_image(x,(image_size,image_size)),paths) .|> cite3channel |> batch .|> Float32
+    # hr=broadcast(x->load_image(x,(hr_image_size,hr_image_size)),paths) .|> cite3channel |> batch .|> Float32
     DataLoader((lr, hr), batchsize=batchsize, shuffle=true,collate=true)
 end
 # data_loader = get_data("datasets/hr",batch_size)

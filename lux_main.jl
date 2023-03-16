@@ -25,7 +25,6 @@ using Statistics:mean
 
 # load model
 using BSON: @load
-modelpath="mymodel.bson"
 
 generator=ESRGAN(3,3,64)
 discriminator=Discriminator()
@@ -40,8 +39,7 @@ include("datasets.jl")
 include("losses.jl")
 #train tool
 
-
-data_loader = get_data(data_dir,batch_size)
+data_loader = get_data(data_dir,batch_size,image_size)
 # data_loader = get_data("datasets/hr",2)
 
 adversarial_criterion = logitbinarycrossentropy
@@ -119,6 +117,7 @@ using ProgressMeter: Progress, next!
 
 function trainesrgan(epochs::Int,data_loader)
     global ps_discriminator,ps_generator,st_discriminator,st_generator
+    global modelname
     for epoch in 1:epochs
         steps=1
         progress = Progress(length(data_loader))
@@ -153,7 +152,7 @@ function trainesrgan(epochs::Int,data_loader)
                 
             end
         end
-        savemodel("mymodel")
+        savemodel(modelname)
     end
 end
 
@@ -161,4 +160,4 @@ trainesrgan(num_epoch,Lux.CUDA.CuIterator(data_loader))
 # trainesrgan(num_epoch,data_loader)
 # save_safe_image(fake_high_resolution, joinpath(sample_dir, string(1), "SR_1.png"))
 # model = loadmodel!(model, @load("mymodel.bson"))
-savemodel("mymodel")
+savemodel(modelname)
