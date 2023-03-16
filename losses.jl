@@ -1,6 +1,8 @@
 using Boltz
 
 model,ps,st=vgg(:vgg19;pretrained=true);
+st=st|>Lux.testmode
+ps,st=(ps,st) .|> device
 
 model=Chain([model.layers...][1:20]...)
 
@@ -27,6 +29,7 @@ loss_network(x::Array)= Lux.apply(model,x,ps,st)[1]
 Zygote.ChainRulesCore.@non_differentiable loss_network(x)
 
 function perceptualloss(high_resolution, fake_high_resolution)
+  _check_sizes(high_resolution, fake_high_resolution)
   l1_loss_mae(loss_network(high_resolution), loss_network(fake_high_resolution))
 end
 

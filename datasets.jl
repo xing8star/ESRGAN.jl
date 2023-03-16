@@ -14,7 +14,7 @@ function cite3channel(x::Array{<:AbstractFloat,4})
     end
 end    
 
-function get_data(path::String,batchsize)
+function get_data(path::String,batchsize::Int)
     paths=readdir(path,join=true)
     lr=broadcast(x->load_image(x,(128,128)),paths) .|> cite3channel |> batch .|> Float32
     hr=broadcast(x->load_image(x,(512,512)),paths) .|> cite3channel |> batch .|> Float32
