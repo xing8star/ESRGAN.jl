@@ -70,14 +70,22 @@ function (m::ResidualInResidualDenseBlock)(x,ps,st)
     out,st=m.rrdb(x,ps,st)
     out*m.residual_beta + x,st
 end
-function UpsampleBlock(nf,scale_factor = 2)
-    return Chain(
-        Upsample(:nearest,scale = (scale_factor,scale_factor)),
-        Conv((3,3),nf=>nf,x -> leakyrelu.(x,0.2),stride = 1,pad = 1,bias=true)
+# function UpsampleBlock(nf,scale_factor = 2)
+#     return Chain(
+#         Upsample(:nearest,scale = (scale_factor,scale_factor)),
+#         Conv((3,3),nf=>nf,x -> leakyrelu.(x,0.2),stride = 1,pad = 1,bias=true)
         
-    )
+#     )
+# end
+function UpsampleBlock(nf,scale_factor = 2)
+    block = Vector()
+    for _ in 1:fld(scale_factor,2)
+        push!(block,Conv((1,1),nf=>nf*(2^2)),
+            PixelShuffle(2),
+            relu)
+    end
+    Chain(block...)
 end
-
 struct Generator{Initial <: Lux.AbstractExplicitLayer,Res <: Lux.AbstractExplicitLayer, 
     C <: Lux.AbstractExplicitLayer, Ups<: Lux.AbstractExplicitLayer,Fin<: Lux.AbstractExplicitLayer} <: 
        Lux.AbstractExplicitContainerLayer{(:initial,:residuals,:conv,:upsamples,:final)}
@@ -95,20 +103,20 @@ function ESRGAN(in_channels, out_channels, nf=64, gc=32, scale_factor=4, n_basic
 
     residuals = Chain([ResidualInResidualDenseBlock(nf;gc) for _ in 1:n_basic_block]...)
     conv = Chain(ReflectionPad2d(1), Conv((3,3),nf=>nf,relu))
-    upsamples = Chain(UpsampleBlock(nf),UpsampleBlock(nf))
+    upsamples = UpsampleBlock(nf,scale_factor)
     final=Chain(ReflectionPad2d(1),
-        Conv((3,3),nf=>nf,x -> leakyrelu.(x,0.2)),
+        Conv((3,3),nf=>nf,relu),
         ReflectionPad2d(1),
-        Conv((3,3),nf=>out_channels,x -> leakyrelu.(x,0.2))
+        Conv((3,3),nf=>out_channels,relu)
     )
     Generator(initial,residuals,conv,upsamples,final)
 end
 function (m::Generator)(x,ps,st)
     initial,st_initial = m.initial(x,ps.initial,st.initial)
-    x1,st_residuals=m.residuals(initial,ps.residuals,st.residuals)
-    x,st_conv = m.conv(x1,ps.conv,st.conv)
-    x+= initial
-    x,st_upsamples = m.upsamples(x,ps.upsamples,st.upsamples)
+    x,st_residuals=m.residuals(initial,ps.residuals,st.residuals)
+    x,st_conv = m.conv(x,ps.conv,st.conv)
+    # x+= initial
+    x,st_upsamples = m.upsamples(x+initial,ps.upsamples,st.upsamples)
     x,st_final = m.final(x,ps.final,st.final)
     st = merge(st, (initial=st_initial, residuals=st_residuals,conv=st_conv, upsamples=st_upsamples, final=st_final))
     return x,st
