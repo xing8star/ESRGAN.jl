@@ -87,7 +87,7 @@ function generator_loss(low_resolution,high_resolution,fake_labels,real_labels,p
     score_fake,st_discriminator = Lux.apply(discriminator,fake_high_resolution,ps_discriminator,st_discriminator)
     discriminator_rf = score_real .- mean(score_fake)
     discriminator_fr = score_fake .- mean(score_real)
-    if Bool(adversarial_loss_factor)
+    if adversarial_loss_factor>0
         adversarial_loss_rf = adversarial_criterion(discriminator_rf, fake_labels)
         adversarial_loss_fr = adversarial_criterion(discriminator_fr, real_labels)
         adversarial_loss = (adversarial_loss_fr + adversarial_loss_rf) / 2
@@ -95,7 +95,7 @@ function generator_loss(low_resolution,high_resolution,fake_labels,real_labels,p
         adversarial_loss=0
     end
 
-    if Bool(perceptual_loss_factor)
+    if perceptual_loss_factor>0
         perceptual_loss = perception_criterion(high_resolution, fake_high_resolution)
     else
         perceptual_loss=0
