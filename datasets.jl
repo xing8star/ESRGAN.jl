@@ -1,5 +1,5 @@
 using Images
-display_image(data)=colorview(RGB,PermutedDimsArray(reshape(data,:,size(data,2),size(data,3)),(3,1,2)))
+display_image(data)=colorview(RGB,PermutedDimsArray(vcat(unbatch(data)...),(3,1,2)))
 save_image(data,path::String)=Images.save(path,display_image(data))
 save_safe_image(data,path::String)=Images.save(path,map(clamp01nan,display_image(data)))
 load_image(path::String)=Images.load(path) |>
@@ -9,7 +9,7 @@ load_image(path::String,size::Tuple)=Images.load(path) |>
                             x->imresize(x,size)|>
                             channelview |>
                             x->PermutedDimsArray(x,(2,3,1))
-                            
+test_image(path::String)= load_image(path)|> x->unsqueeze(x,4)
 function cite3channel(x::AbstractArray{<:Real,3})
     if size(x,3)==4
         return x[:,:,1:3]
